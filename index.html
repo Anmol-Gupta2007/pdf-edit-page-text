@@ -20,7 +20,7 @@
         <div class="container">
             <header>
                 <h1>📝 Edit PDF Pages</h1>
-                <p>Use whiteout to erase old text, and drop new text on top.</p>
+                <p>Use whiteout to erase old text, and drop formatted new text anywhere.</p>
             </header>
             
             <div class="upload-area" id="upload-area">
@@ -32,11 +32,31 @@
             <!-- Editor Toolbar -->
             <div id="editor-toolbar" style="display: none;" class="action-bar">
                 <h3>Editor Tools</h3>
+                
                 <div class="tools-layout">
+                    <!-- Tool Selector -->
                     <div class="tool-group">
                         <button id="tool-text" class="tool-btn active">✍️ Add Text</button>
-                        <button id="tool-whiteout" class="tool-btn">🧽 Whiteout (Erase)</button>
+                        <button id="tool-whiteout" class="tool-btn">🧽 Whiteout</button>
                     </div>
+
+                    <!-- Font Selection -->
+                    <div class="tool-group">
+                        <select id="font-family" class="style-select">
+                            <option value="Helvetica">Helvetica (Sans-Serif)</option>
+                            <option value="TimesRoman">Times Roman (Serif)</option>
+                            <option value="Courier">Courier (Monospace)</option>
+                        </select>
+                    </div>
+
+                    <!-- Styling Toggles -->
+                    <div class="tool-group">
+                        <button id="btn-bold" class="style-btn" title="Bold"><b>B</b></button>
+                        <button id="btn-italic" class="style-btn" title="Italic"><i>I</i></button>
+                        <button id="btn-underline" class="style-btn" style="text-decoration: underline;" title="Underline">U</button>
+                    </div>
+
+                    <!-- Size and Color -->
                     <div class="tool-group">
                         <label>Size: </label>
                         <input type="number" id="font-size" value="16" min="8" max="72" class="size-input">
@@ -44,7 +64,8 @@
                         <input type="color" id="text-color" value="#000000" class="color-input">
                     </div>
                 </div>
-                <p class="hint-text">Click anywhere on a page below to apply the selected tool.</p>
+                
+                <p class="hint-text">Click anywhere on a page below to apply your selected tool.</p>
                 <hr class="divider">
                 <button id="download-btn" class="final-btn btn-single">⬇️ Save & Download PDF</button>
             </div>
