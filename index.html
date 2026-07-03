@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit PDF Text</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Load pdf-lib for Editing PDFs -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    
+    <!-- Load pdf.js for rendering large page previews -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+</head>
+<body>
+    <div class="app-wrapper">
+        <div class="container">
+            <header>
+                <h1>📝 Edit PDF Pages</h1>
+                <p>Use whiteout to erase old text, and drop new text on top.</p>
+            </header>
+            
+            <div class="upload-area" id="upload-area">
+                <input type="file" id="file-input" accept="application/pdf" style="display: none;">
+                <button class="upload-btn" id="choose-btn">Choose PDF</button>
+                <p>or drag and drop your file here</p>
+            </div>
+
+            <!-- Editor Toolbar -->
+            <div id="editor-toolbar" style="display: none;" class="action-bar">
+                <h3>Editor Tools</h3>
+                <div class="tools-layout">
+                    <div class="tool-group">
+                        <button id="tool-text" class="tool-btn active">✍️ Add Text</button>
+                        <button id="tool-whiteout" class="tool-btn">🧽 Whiteout (Erase)</button>
+                    </div>
+                    <div class="tool-group">
+                        <label>Size: </label>
+                        <input type="number" id="font-size" value="16" min="8" max="72" class="size-input">
+                        <label>Color: </label>
+                        <input type="color" id="text-color" value="#000000" class="color-input">
+                    </div>
+                </div>
+                <p class="hint-text">Click anywhere on a page below to apply the selected tool.</p>
+                <hr class="divider">
+                <button id="download-btn" class="final-btn btn-single">⬇️ Save & Download PDF</button>
+            </div>
+
+            <!-- Container for all the individual page editors -->
+            <div id="pages-container"></div>
+            
+        </div>
+    </div>
+
+    <!-- Processing Modal -->
+    <div class="modal" id="processing-modal">
+        <div class="modal-content">
+            <div class="loader"></div>
+            <h2>Processing...</h2>
+            <p>Please wait while we prepare your document previews.</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
