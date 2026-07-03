@@ -4,6 +4,12 @@ let originalFileName = "";
 let totalPages = 0;
 let currentTool = 'text'; // 'text' or 'whiteout'
 
+// Toolbar States
+let currentFont = 'Helvetica';
+let isBold = false;
+let isItalic = false;
+let isUnderlined = false;
+
 // UI Elements
 const uploadArea = document.getElementById('upload-area');
 const fileInput = document.getElementById('file-input');
@@ -16,10 +22,14 @@ const downloadBtn = document.getElementById('download-btn');
 // Toolbar Elements
 const toolTextBtn = document.getElementById('tool-text');
 const toolWhiteoutBtn = document.getElementById('tool-whiteout');
+const fontSelect = document.getElementById('font-family');
+const btnBold = document.getElementById('btn-bold');
+const btnItalic = document.getElementById('btn-italic');
+const btnUnderline = document.getElementById('btn-underline');
 const fontSizeInput = document.getElementById('font-size');
 const colorInput = document.getElementById('text-color');
 
-// --- Toolbar Logic ---
+// --- Tool Selector Logic ---
 toolTextBtn.addEventListener('click', () => {
     currentTool = 'text';
     toolTextBtn.classList.add('active');
@@ -30,6 +40,24 @@ toolWhiteoutBtn.addEventListener('click', () => {
     currentTool = 'whiteout';
     toolWhiteoutBtn.classList.add('active');
     toolTextBtn.classList.remove('active');
+});
+
+// --- Rich Text Styling Logic ---
+fontSelect.addEventListener('change', (e) => { currentFont = e.target.value; });
+
+btnBold.addEventListener('click', () => {
+    isBold = !isBold;
+    btnBold.classList.toggle('active');
+});
+
+btnItalic.addEventListener('click', () => {
+    isItalic = !isItalic;
+    btnItalic.classList.toggle('active');
+});
+
+btnUnderline.addEventListener('click', () => {
+    isUnderlined = !isUnderlined;
+    btnUnderline.classList.toggle('active');
 });
 
 // --- Helper: Download Function ---
@@ -43,14 +71,6 @@ function download(data, filename, type) {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-}
-
-// --- Helper: Hex to RGB for PDF-Lib ---
-function hexToRgb(hex) {
-    const r = parseInt(hex.slice(1, 3), 16) / 255;
-    const g = parseInt(hex.slice(3, 5), 16) / 255;
-    const b = parseInt(hex.slice(5, 7), 16) / 255;
-    return { r, g, b };
 }
 
 // --- Uploading Logic ---
@@ -101,7 +121,6 @@ async function buildPageEditors() {
         const card = document.createElement('div');
         card.className = 'page-container';
         
-        // The wrapper traps clicks to calculate exact X, Y coordinates
         card.innerHTML = `
             <div class="page-title">Page ${i + 1}</div>
             <div class="canvas-wrapper" id="wrapper-${i}">
@@ -111,7 +130,6 @@ async function buildPageEditors() {
         
         pagesContainer.appendChild(card);
 
-        // Render PDF page onto canvas
         try {
             const page = await pdfViewerDoc.getPage(i + 1);
             const canvas = document.getElementById(`canvas-${i}`);
@@ -127,7 +145,6 @@ async function buildPageEditors() {
             
             await page.render({ canvasContext: context, viewport: viewport }).promise;
             
-            // Add click listener to spawn elements on this specific wrapper
             const wrapper = document.getElementById(`wrapper-${i}`);
             wrapper.addEventListener('mousedown', (e) => handleCanvasClick(e, wrapper));
 
@@ -137,20 +154,25 @@ async function buildPageEditors() {
     }
 }
 
-// --- Spawn Text/Whiteout Elements ---
+// --- Spawn Text & Whiteout Elements ---
 function handleCanvasClick(e, wrapper) {
-    // Ignore clicks if they clicked on an existing element (like a textarea)
     if (e.target !== wrapper && e.target.tagName !== 'CANVAS') return;
 
-    // Calculate click coordinates relative to the top-left of the wrapper
     const rect = wrapper.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
     const elementContainer = document.createElement('div');
     elementContainer.className = 'overlay-element';
-    elementContainer.style.left = `${x}px`;
-    elementContainer.style.top = `${y}px`;
+    
+    // Offset slightly based on tool for better cursor placement
+    if (currentTool === 'text') {
+        elementContainer.style.left = `${x}px`;
+        elementContainer.style.top = `${y - 15}px`; 
+    } else {
+        elementContainer.style.left = `${x}px`;
+        elementContainer.style.top = `${y}px`;
+    }
 
     const deleteBtn = document.createElement('button');
     deleteBtn.innerText = 'X';
@@ -161,8 +183,23 @@ function handleCanvasClick(e, wrapper) {
     if (currentTool === 'text') {
         const textarea = document.createElement('textarea');
         textarea.className = 'text-overlay';
+        
+        // Apply current toolbar styles to the textarea
+        textarea.style.fontFamily = currentFont === 'TimesRoman' ? '"Times New Roman", Times, serif' : 
+                                    currentFont === 'Courier' ? '"Courier New", Courier, monospace' : 
+                                    'Helvetica, Arial, sans-serif';
         textarea.style.fontSize = `${fontSizeInput.value}px`;
         textarea.style.color = colorInput.value;
+        textarea.style.fontWeight = isBold ? 'bold' : 'normal';
+        textarea.style.fontStyle = isItalic ? 'italic' : 'normal';
+        textarea.style.textDecoration = isUnderlined ? 'underline' : 'none';
+        
+        // Store metadata for the PDF rendering step later
+        textarea.dataset.fontFamily = currentFont;
+        textarea.dataset.isBold = isBold;
+        textarea.dataset.isItalic = isItalic;
+        textarea.dataset.isUnderlined = isUnderlined;
+
         textarea.placeholder = "Type here...";
         elementContainer.appendChild(textarea);
         wrapper.appendChild(elementContainer);
@@ -176,6 +213,32 @@ function handleCanvasClick(e, wrapper) {
     }
 }
 
+// --- Helper: Map Styles to PDF-Lib Standard Fonts ---
+function getPdfFont(pdfDoc, PDFLib, fontFamily, isBold, isItalic) {
+    const { StandardFonts } = PDFLib;
+    let fontEnum = StandardFonts.Helvetica;
+
+    if (fontFamily === 'Helvetica') {
+        if (isBold && isItalic) fontEnum = StandardFonts.HelveticaBoldOblique;
+        else if (isBold) fontEnum = StandardFonts.HelveticaBold;
+        else if (isItalic) fontEnum = StandardFonts.HelveticaOblique;
+    } 
+    else if (fontFamily === 'TimesRoman') {
+        if (isBold && isItalic) fontEnum = StandardFonts.TimesRomanBoldItalic;
+        else if (isBold) fontEnum = StandardFonts.TimesRomanBold;
+        else if (isItalic) fontEnum = StandardFonts.TimesRomanItalic;
+        else fontEnum = StandardFonts.TimesRoman;
+    } 
+    else if (fontFamily === 'Courier') {
+        if (isBold && isItalic) fontEnum = StandardFonts.CourierBoldOblique;
+        else if (isBold) fontEnum = StandardFonts.CourierBold;
+        else if (isItalic) fontEnum = StandardFonts.CourierOblique;
+        else fontEnum = StandardFonts.Courier;
+    }
+
+    return pdfDoc.embedFont(fontEnum);
+}
+
 // --- Process and Download Edited PDF ---
 downloadBtn.addEventListener('click', async () => {
     if (!uploadedFile) return;
@@ -187,7 +250,6 @@ downloadBtn.addEventListener('click', async () => {
         const pdfDoc = await PDFDocument.load(arrayBuffer);
         const pages = pdfDoc.getPages();
         
-        // Loop through all pages to gather overlay elements
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
             const pdfWidth = page.getWidth();
@@ -195,28 +257,23 @@ downloadBtn.addEventListener('click', async () => {
             
             const wrapper = document.getElementById(`wrapper-${i}`);
             const canvas = document.getElementById(`canvas-${i}`);
-            
-            // Get all overlay elements placed on this page
             const overlays = wrapper.querySelectorAll('.overlay-element');
             
-            overlays.forEach(overlay => {
-                // Get the DOM position/size of the overlay
+            for (const overlay of overlays) {
                 const domX = parseFloat(overlay.style.left);
                 const domY = parseFloat(overlay.style.top);
                 const domWidth = overlay.offsetWidth;
                 const domHeight = overlay.offsetHeight;
 
-                // Map DOM coordinates to PDF coordinates
-                // DOM (0,0) is top-left. PDF (0,0) is bottom-left.
                 const scaleX = pdfWidth / canvas.offsetWidth;
                 const scaleY = pdfHeight / canvas.offsetHeight;
 
                 const pdfX = domX * scaleX;
-                const pdfY = pdfHeight - (domY * scaleY) - (domHeight * scaleY); // Flip Y-axis
+                const pdfY = pdfHeight - (domY * scaleY) - (domHeight * scaleY);
                 const finalPdfWidth = domWidth * scaleX;
                 const finalPdfHeight = domHeight * scaleY;
 
-                // Is it Whiteout?
+                // 1. Process Whiteout Boxes
                 const whitebox = overlay.querySelector('.whiteout-overlay');
                 if (whitebox) {
                     page.drawRectangle({
@@ -228,38 +285,61 @@ downloadBtn.addEventListener('click', async () => {
                     });
                 }
 
-                // Is it Text?
+                // 2. Process Text Boxes
                 const textarea = overlay.querySelector('.text-overlay');
                 if (textarea && textarea.value.trim() !== "") {
-                    // Extract styles
-                    const domFontSize = parseFloat(textarea.style.fontSize);
-                    const hexColor = textarea.style.color; // DOM returns rgb(x, y, z) or hex
                     
-                    // Simple hack to parse DOM color string back to RGB percentages
+                    const textContent = textarea.value;
+                    const domFontSize = parseFloat(textarea.style.fontSize);
+                    const pdfFontSize = domFontSize * scaleY * 0.75; 
+
+                    // Extract color
                     const tempEl = document.createElement("div");
-                    tempEl.style.color = hexColor;
+                    tempEl.style.color = textarea.style.color;
                     document.body.appendChild(tempEl);
                     const computedColor = window.getComputedStyle(tempEl).color;
                     document.body.removeChild(tempEl);
-                    
                     const rgbValues = computedColor.match(/\d+/g);
                     const r = parseInt(rgbValues[0]) / 255;
                     const g = parseInt(rgbValues[1]) / 255;
                     const b = parseInt(rgbValues[2]) / 255;
 
-                    // Convert font size (DOM pixels -> PDF points)
-                    // It's a rough approximation based on the scale factor
-                    const pdfFontSize = domFontSize * scaleY * 0.75; 
+                    // Get embedded font based on styles
+                    const isB = textarea.dataset.isBold === 'true';
+                    const isI = textarea.dataset.isItalic === 'true';
+                    const isU = textarea.dataset.isUnderlined === 'true';
+                    const font = await getPdfFont(pdfDoc, PDFLib, textarea.dataset.fontFamily, isB, isI);
 
-                    // We draw the text slightly inset from the top-left of the textarea box
-                    page.drawText(textarea.value, {
-                        x: pdfX + (2 * scaleX), // 2px padding offset
-                        y: pdfY + finalPdfHeight - pdfFontSize, // Draw from top-down inside the box
+                    const drawY = pdfY + finalPdfHeight - pdfFontSize;
+
+                    // Draw the text
+                    page.drawText(textContent, {
+                        x: pdfX + (2 * scaleX),
+                        y: drawY,
                         size: pdfFontSize,
+                        font: font,
                         color: rgb(r, g, b),
+                        lineHeight: pdfFontSize * 1.2
                     });
+
+                    // Draw Underline manually if requested
+                    if (isU) {
+                        const lines = textContent.split('\n');
+                        let currentY = drawY;
+                        
+                        lines.forEach(line => {
+                            const textWidth = font.widthOfTextAtSize(line, pdfFontSize);
+                            page.drawLine({
+                                start: { x: pdfX + (2 * scaleX), y: currentY - 2 },
+                                end: { x: pdfX + (2 * scaleX) + textWidth, y: currentY - 2 },
+                                thickness: pdfFontSize * 0.08,
+                                color: rgb(r, g, b)
+                            });
+                            currentY -= (pdfFontSize * 1.2);
+                        });
+                    }
                 }
-            });
+            }
         }
 
         const newPdfBytes = await pdfDoc.save();
