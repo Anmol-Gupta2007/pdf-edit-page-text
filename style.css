@@ -259,17 +259,45 @@ header p {
 }
 .whiteout-overlay:hover { border: 1px solid #e74c3c; }
 
+/* --- NEW: Drag Handle --- */
+.drag-handle {
+    position: absolute;
+    top: -18px; 
+    left: 0; 
+    right: 0;
+    height: 18px;
+    background: #4facfe;
+    color: white;
+    font-size: 12px;
+    line-height: 18px;
+    text-align: center;
+    cursor: grab;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    display: none; /* Hidden by default */
+    z-index: 20;
+    user-select: none;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.overlay-element:hover .drag-handle {
+    display: block; /* Show on hover */
+}
+
 /* Delete button for elements */
 .delete-btn {
     position: absolute;
     top: -10px; right: -10px;
     background: #ff4757; color: white;
     border: none; border-radius: 50%;
-    width: 20px; height: 20px;
+    width: 22px; height: 22px;
     cursor: pointer;
     font-size: 12px; line-height: 12px;
     display: none;
-    z-index: 20;
+    z-index: 25;
 }
 .overlay-element:hover .delete-btn { display: block; }
 
