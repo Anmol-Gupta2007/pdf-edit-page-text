@@ -156,7 +156,8 @@ async function buildPageEditors() {
 
 // --- Spawn Text & Whiteout Elements ---
 function handleCanvasClick(e, wrapper) {
-    if (e.target !== wrapper && e.target.tagName !== 'CANVAS') return;
+    // Prevent spawning new elements if they click on an existing one
+    if (e.target.closest('.overlay-element')) return;
 
     const rect = wrapper.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -174,12 +175,44 @@ function handleCanvasClick(e, wrapper) {
         elementContainer.style.top = `${y}px`;
     }
 
+    // --- Create Drag Handle ---
+    const dragHandle = document.createElement('div');
+    dragHandle.className = 'drag-handle';
+    dragHandle.innerHTML = '⋮⋮ Drag';
+    
+    // Drag Logic
+    dragHandle.addEventListener('mousedown', function(e) {
+        e.preventDefault(); // Prevents highlighting text while dragging
+        
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startLeft = parseFloat(elementContainer.style.left) || 0;
+        const startTop = parseFloat(elementContainer.style.top) || 0;
+
+        function doDrag(e) {
+            elementContainer.style.left = `${startLeft + e.clientX - startX}px`;
+            elementContainer.style.top = `${startTop + e.clientY - startY}px`;
+        }
+
+        function stopDrag() {
+            document.removeEventListener('mousemove', doDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        document.addEventListener('mousemove', doDrag);
+        document.addEventListener('mouseup', stopDrag);
+    });
+
+    elementContainer.appendChild(dragHandle);
+
+    // --- Create Delete Button ---
     const deleteBtn = document.createElement('button');
     deleteBtn.innerText = 'X';
     deleteBtn.className = 'delete-btn';
     deleteBtn.onclick = () => wrapper.removeChild(elementContainer);
     elementContainer.appendChild(deleteBtn);
 
+    // --- Populate the tool ---
     if (currentTool === 'text') {
         const textarea = document.createElement('textarea');
         textarea.className = 'text-overlay';
@@ -187,7 +220,10 @@ function handleCanvasClick(e, wrapper) {
         // Apply current toolbar styles to the textarea
         textarea.style.fontFamily = currentFont === 'TimesRoman' ? '"Times New Roman", Times, serif' : 
                                     currentFont === 'Courier' ? '"Courier New", Courier, monospace' : 
+                                    currentFont === 'Symbol' ? 'Symbol' : 
+                                    currentFont === 'ZapfDingbats' ? 'ZapfDingbats' :
                                     'Helvetica, Arial, sans-serif';
+        
         textarea.style.fontSize = `${fontSizeInput.value}px`;
         textarea.style.color = colorInput.value;
         textarea.style.fontWeight = isBold ? 'bold' : 'normal';
@@ -234,6 +270,12 @@ function getPdfFont(pdfDoc, PDFLib, fontFamily, isBold, isItalic) {
         else if (isBold) fontEnum = StandardFonts.CourierBold;
         else if (isItalic) fontEnum = StandardFonts.CourierOblique;
         else fontEnum = StandardFonts.Courier;
+    }
+    else if (fontFamily === 'Symbol') {
+        fontEnum = StandardFonts.Symbol;
+    }
+    else if (fontFamily === 'ZapfDingbats') {
+        fontEnum = StandardFonts.ZapfDingbats;
     }
 
     return pdfDoc.embedFont(fontEnum);
